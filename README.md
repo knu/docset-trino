@@ -1,5 +1,5 @@
-Presto Docset builder for Dash.app
-==================================
+Trino Docset builder for Dash.app
+=================================
 
 How to use
 ----------
@@ -7,7 +7,7 @@ How to use
     % bundle
     % rake
 
-    % open Presto.docset
+    % open Trino.docset
 
 Requirements
 ------------
@@ -21,22 +21,18 @@ Requirements
 References
 ----------
 
-- [GitHub Project](https://github.com/knu/docset-presto)
+- [GitHub Project](https://github.com/knu/docset-trino)
 
-- [Presto Documentation](https://trino.io/docs/current/)
+- [Trino Documentation](https://trino.io/docs/current/)
 
 License
 -------
 
 This build script suite is:
 
-Copyright (c) 2017-2020 [Akinori MUSHA](https://akinori.org/)
+Copyright (c) 2017-2022 [Akinori MUSHA](https://akinori.org/)
 
 Licensed under the 2-clause BSD license.
 See `LICENSE` for details.
 
-A generated docset will be:
-
-Copyright 2013-2016 Facebook
-
-Licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+A generated docset will be licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).

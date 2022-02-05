@@ -136,6 +136,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?, ?, ?);
   SQL
 
+  select = db.prepare(<<-SQL)
+    SELECT TRUE FROM searchIndex where type = ? AND name = ?;
+  SQL
+
   anchor_section = ->(path, node, name) {
     type = 'Section'
     a = Nokogiri::XML::Node.new('a', node.document)
@@ -196,6 +200,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       doc.css('link[href~="://"]').each { |node|
         warn "#{path} refers to an external resource: #{node.to_s}"
       }
+      doc.css('#announcement').remove
 
       main = doc.at('article') or next
 
@@ -209,6 +214,18 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       case path
       when %r{\Afunctions/}
         case File.basename(path, '.html')
+        when 'conditional'
+          main.css('h2').each { |h|
+            title = h.text.chomp('#')
+            if h.at_xpath("./following-sibling::*[1]/code[string(.) = '#{title}' and starts-with(normalize-space(./following-sibling::text()[1]), 'expression ')]")
+              case title
+              when 'CASE', 'IF'
+                index_item.(path, h, 'Query', title)
+              else
+                raise "Unknown expression: #{title}"
+              end
+            end
+          }
         when 'decimal'
           main.css('.literal > .pre').each { |pre|
             case pre.text
@@ -217,7 +234,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           }
 
-          main.at('//h2[contains(string(.), " Operator")]/following-sibling::table').css('td:first-of-type .literal > .pre').each { |pre|
+          main.at('//h2[contains(string(.), " operator")]/following-sibling::table').css('td:first-of-type .literal > .pre').each { |pre|
             case pre.text
             when %r{\A[+\-*/%]\z}
               index_item.(path, pre, 'Operator', pre.text)
@@ -235,7 +252,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           next
         end
 
-        main.xpath('//h2[contains(string(.), " Operator")]/following-sibling::*').each { |el|
+        main.xpath('//h2[contains(string(.), " operator")]/following-sibling::*').each { |el|
           case el.name
           when 'h1', 'h2'
             break
@@ -265,7 +282,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        if h = main.at('//h2[contains(string(.), " Properties")]')
+        if h = main.at('//h2[contains(string(.), " properties")]')
           h.xpath('./following-sibling::*').each { |el|
             case el.name
             when 'h1', 'h2'
@@ -280,10 +297,12 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           }
         end
       when 'language/types.html'
-        main.css('h2').each { |h2|
-          case text = h2.text.chomp('#')
-          when /\A((?<w>[A-Z]+) )*\g<w>\z/
-            index_item.(path, h2, 'Type', text)
+        main.css('h3 code').each { |code|
+          case text = code.text.chomp('#')
+          when /\A(?<w>[A-Z][A-Za-z0-9]*(\(P\))?)( \g<w>)*\z/
+            index_item.(path, h, 'Type', text)
+          else
+            raise "Unknown type name: #{text}"
           end
         }
       when %r{\Asql/}
@@ -296,12 +315,28 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         if path == 'sql/select.html'
           main.css('h2, h3').each { |h|
             case h.text.chomp('#')
-            when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) \| )*\g<q>)(?: Clause)?\z/
+            when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) or )*\g<q>)(?: clause)?\z/
               $~[:queries].scan(/(?<q>(?:(?<w>[A-Z]+) )*\g<w>)/) {
                 index_item.(path, h, 'Query', $~[:q])
               }
             end
           }
+        end
+      end
+
+      if h = main.at_css('#procedures')
+        el = h
+        while el = el.next_element
+          case el.name
+          when /\Ah[1-6]\z/
+            break if el.name <= h.name
+          when 'ul'
+            el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
+              if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
+                index_item.(path, el, 'Procedure', procedure)
+              end
+            end
+          end
         end
       end
 
@@ -319,7 +354,56 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     }
   end
 
+  select.close
   insert.close
+
+  get_count = ->(**criteria) do
+    db.get_first_value(<<-SQL, criteria.values)
+      SELECT COUNT(*) from searchIndex where #{
+        criteria.each_key.map { |column| "#{column} = ?" }.join(' and ')
+      }
+    SQL
+  end
+
+  assert_exists = ->(**criteria) do
+    if get_count.(**criteria).zero?
+      raise "#{criteria.inspect} not found in index!"
+    end
+  end
+
+  puts 'Performing sanity check'
+
+  {
+    'Statement' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE',
+                    'REFRESH MATERIALIZED VIEW'],
+    'Query' => ['CROSS JOIN',
+                'UNION', 'INTERSECT', 'EXCEPT',
+                'GROUP BY', 'LIMIT', 'FETCH FIRST', 'OFFSET',
+                'IN', 'EXISTS', 'UNNEST',
+                'IF', 'CASE'],
+    'Function' => ['count', 'merge',
+                   'array_sort', 'rank',
+                   'if', 'coalesce', 'nullif'],
+    'Procedure' => ['kudu.system.add_range_partition',
+                    'kudu.system.drop_range_partition',
+                    'system.create_empty_partition',
+                    'system.drop_stats',
+                    'system.flush_metadata_cache',
+                    'system.register_partition',
+                    'system.sync_partition_metadata',
+                    'system.unregister_partition'],
+    'Type' => ['BOOLEAN', 'BIGINT', 'DOUBLE', 'DECIMAL', 'VARCHAR', 'VARBINARY',
+               'DATE', 'TIMESTAMP', 'TIMESTAMP(P) WITH TIME ZONE',
+               'ARRAY', 'UUID', 'HyperLogLog'],
+    'Operator' => ['+', '<=', '!=', '<>', '[]', '||',
+                   'BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
+                   'ANY', 'IS NULL', 'IS DISTINCT FROM'],
+    'Section' => ['BigQuery connector']
+  }.each { |type, names|
+    names.each { |name|
+      assert_exists.(name: name, type: type)
+    }
+  }
 
   db.close
 
