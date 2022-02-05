@@ -3,9 +3,9 @@ vendor/bundle/
 Gemfile.lock
 *.docset/
 *.tgz
-6882181\?*
+34147222\?*
 icon.png
-prestosql.io/
+trino.io/
 wget.log
 Dash-User-Contributions/
 tmp/

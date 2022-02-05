@@ -24,7 +24,7 @@ def extract_version
   cd DOCS_ROOT do
     Dir.glob('**/index.html') { |path|
       doc = Nokogiri::HTML(File.read(path), path)
-      if version = doc.title[/Presto ([\d.]+)/, 1]
+      if version = doc.title[/Trino ([\d.]+)/, 1]
         return version
       end
     }
@@ -32,7 +32,7 @@ def extract_version
   nil
 end
 
-DOCSET_NAME = 'Presto'
+DOCSET_NAME = 'Trino'
 DOCSET = "#{DOCSET_NAME.tr(' ', '_')}.docset"
 DOCSET_ARCHIVE = File.basename(DOCSET, '.docset') + '.tgz'
 ROOT_RELPATH = 'Contents/Resources/Documents'
@@ -41,7 +41,7 @@ DOCS_ROOT = File.join(DOCSET, ROOT_RELPATH)
 DOCS_INDEX = File.join(DOCSET, INDEX_RELPATH)
 DOCS_URI = URI("https://trino.io/docs/#{ENV['BUILD_VERSION'] || 'current'}/")
 DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
-ICON_URL = URI('https://avatars3.githubusercontent.com/u/6882181?v=3&s=64')
+ICON_URL = URI('https://avatars.githubusercontent.com/u/34147222?v=4&s=64')
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
 DUC_OWNER = 'knu'
@@ -49,7 +49,7 @@ DUC_REPO = "git@github.com:#{DUC_OWNER}/Dash-User-Contributions.git"
 DUC_OWNER_UPSTREAM = 'Kapeli'
 DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contributions.git"
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
-DUC_BRANCH = 'presto'
+DUC_BRANCH = 'trino'
 
 def current_version
   ENV['BUILD_VERSION'] || extract_version()
@@ -162,12 +162,16 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     insert.execute(name, type, url)
   }
 
+  has_item = ->(type, name) {
+    !select.execute!(type, name).empty?
+  }
+
   version = extract_version or raise "Version unknown"
 
   puts "Generating docset for #{DOCSET_NAME} #{version}"
 
   cd DOCS_ROOT do
-    File.open("_static/presto.css", "a") { |css|
+    File.open("_static/trino.css", "a") { |css|
       css.print <<~CSS
 
         /* Added for docset */
@@ -378,7 +382,7 @@ namespace :diff do
       '-x', '*.css',
       '-x', '*.svg',
       '-I', '^[[:space:]]+VERSION:[[:space:]]+\'[0-9.]+\',',
-      '-I', 'Presto [0-9]+',
+      '-I', 'Trino [0-9]+',
       '-I', '^[[:space:]]*$',
       old_root, new_root do
       # ignore status
