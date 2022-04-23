@@ -450,12 +450,7 @@ end
 namespace :dump do
   desc 'Dump the index.'
   task :index do
-    Tempfile.create(['', '.txt']) do |txt|
-      dump_index(built_docset, txt)
-
-      txt.rewind
-      print txt.read
-    end
+    dump_index(built_docset, $stdout)
   end
 end
 
@@ -473,7 +468,9 @@ namespace :diff do
     Tempfile.create(['old', '.txt']) do |otxt|
       Tempfile.create(['new', '.txt']) do |ntxt|
         dump_index(previous_docset, otxt)
+        otxt.close
         dump_index(built_docset, ntxt)
+        ntxt.close
 
         sh 'diff', '-U3', otxt.path, ntxt.path do
           # ignore status
