@@ -268,25 +268,32 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           next
         end
 
-        main.xpath('.//h2[contains(string(.), " operator")]/following-sibling::*').each { |el|
-          case el.name
-          when 'h1', 'h2'
-            break
-          when 'table'
-            if el.at('.//th[string(.) = "Operator"]')
-              el.css('td:first-of-type .literal > .pre').each_with_object({}) { |pre, seen|
-                op = pre.text
-                next if seen[op]
+        main.xpath('.//h2[contains(string(.), " operator")]').each { |h|
+          h.xpath('./following-sibling::*').each { |el|
+            case el.name
+            when 'h1', 'h2'
+              break
+            when 'table'
+              if el.at('.//th[string(.) = "Operator"]')
+                el.css('td:first-of-type .literal > .pre').each_with_object({}) { |pre, seen|
+                  op = pre.text
+                  next if seen[op]
 
-                index_item.(path, pre, 'Operator', op)
-                seen[op] = true
+                  index_item.(path, pre, 'Operator', op)
+                  seen[op] = true
+                }
+              end
+            when 'p'
+              el.css('.literal').each { |literal|
+                case op = literal.text.gsub(/\s+/, ' ')
+                when /\A(?:NULL|TRUE|FALSE)\z|\A[a-z]/
+                  # ignore
+                else
+                  index_item.(path, literal, 'Operator', op)
+                end
               }
             end
-          when 'p'
-            el.css('.literal > .pre').each { |pre|
-              index_item.(path, pre, 'Operator', pre.text)
-            }
-          end
+          }
         }
 
         main.css('h2').each { |h2|
@@ -419,7 +426,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
                'DATE', 'TIMESTAMP', 'TIMESTAMP(P) WITH TIME ZONE',
                'ARRAY', 'UUID', 'HyperLogLog'],
     'Operator' => ['+', '<=', '!=', '<>', '[]', '||',
-                   'BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
+                   'BETWEEN', 'NOT BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
                    'ANY', 'IS NULL', 'IS DISTINCT FROM'],
     'Variable' => ['trino.thrift.client.connect-timeout'],
     'Section' => ['BigQuery connector']
