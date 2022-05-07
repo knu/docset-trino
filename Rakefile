@@ -479,6 +479,7 @@ namespace :diff do
         dump_index(built_docset, ntxt)
         ntxt.close
 
+        puts "Diff in document indexes:"
         sh 'diff', '-U3', otxt.path, ntxt.path do
           # ignore status
         end
@@ -491,6 +492,7 @@ namespace :diff do
     old_root = File.join(previous_docset, ROOT_RELPATH)
     new_root = File.join(built_docset, ROOT_RELPATH)
 
+    puts "Diff in document files:"
     sh 'diff', '-rwNU3',
       '-x', '*.js',
       '-x', '*.css',
