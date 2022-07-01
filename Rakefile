@@ -311,7 +311,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             when 'h1', 'h2'
               break
             when 'table'
-              if el.at('.//th[string(.) = "Property Name"]')
+              if el.at('.//th[translate(., "NP", "np") = "property name"]')
                 el.css('td:first-of-type .literal > .pre').each { |pre|
                   index_item.(path, pre, 'Variable', pre.text)
                 }
