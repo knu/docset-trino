@@ -87,6 +87,8 @@ def dump_index(docset, out)
       out.puts row.join("\t")
     end
   end
+
+  out.flush
 end
 
 def wget(*args)
