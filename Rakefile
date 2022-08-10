@@ -445,7 +445,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
   puts "Finished creating #{DOCSET} #{version}"
 
-  Rake::Task[:diff].invoke
+  Rake::Task[:"diff:index"].invoke
 end
 
 task :dump do
