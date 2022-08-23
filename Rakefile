@@ -127,7 +127,7 @@ end
 
 desc 'Build a docset in the current directory.'
 task :build => [DOCS_DIR, ICON_FILE] do |t|
-  rm_rf DOCSET
+  rm_rf [DOCSET, DOCSET_ARCHIVE]
 
   mkdir_p DOCS_ROOT
 
@@ -440,6 +440,8 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
   db.close
 
+  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET
+
   mkdir_p "versions/#{version}/#{DOCSET}"
   sh 'rsync', '-a', '--exclude=.DS_Store', '--delete', "#{DOCSET}/", "versions/#{version}/#{DOCSET}/"
 
@@ -538,8 +540,7 @@ task :push => DUC_WORKDIR do
     end
   end
 
-  sh 'tar', '-zcf', DOCSET_ARCHIVE, '--exclude=.DS_Store', DOCSET
-  mv DOCSET_ARCHIVE, archive
+  cp DOCSET_ARCHIVE, archive
   mkdir_p versioned_archive.dirname
   cp archive, versioned_archive
 
