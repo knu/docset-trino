@@ -202,10 +202,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     !select.execute!(type, name).empty?
   }
 
-  in_procedures_section = ->(node) {
-    node.xpath('(./ancestor::*/preceding-sibling::h2)[last()][contains(@id, "procedures")]').size > 0
-  }
-
   version = extract_version or raise "Version unknown"
 
   puts "Generating docset for #{DOCSET_NAME} #{version}"
@@ -325,19 +321,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        if h = main.at('.//h2[contains(translate(., "P", "p"), " properties")]')
-          h.xpath('./following-sibling::*').each { |el|
-            case el.name
-            when 'h1', 'h2'
-              break
-            when 'table'
-              if el.at('.//th[translate(., "NP", "np") = "property name"]')
-                el.css('td:first-of-type .literal > .pre').each { |pre|
-                  index_item.(path, pre, 'Variable', pre.text)
-                }
-              end
-            end
-          }
+        main.xpath('.//table[.//th[translate(., "NP", "np") = "property name"] and ./ancestor::section[contains(@id, "properties")]]').each do |table|
+          table.css('td:first-of-type .literal > .pre').each do |pre|
+            index_item.(path, pre, 'Variable', pre.text)
+          end
         end
       when 'language/types.html'
         main.css('h3 > code').each { |code|
@@ -367,23 +354,15 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       end
 
-      if h = main.at_css('#procedures')
-        el = h
-        while el = el.next_element
-          case el.name
-          when /\Ah[1-6]\z/
-            break if el.name <= h.name
-          when 'ul'
-            el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
-              if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
-                index_item.(path, el, 'Procedure', procedure)
-              end
-            end
+      main.css('section#procedures > ul').each do |el|
+        el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
+          if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
+            index_item.(path, el, 'Procedure', procedure)
           end
         end
       end
 
-      main.css('code.descname').each { |descname|
+      main.css('.descname').each { |descname|
         func =
           if (prev = descname.previous).matches?('.descclassname')
             prev.text + descname.text
@@ -391,7 +370,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             descname.text
           end
         type =
-          if in_procedures_section.(descname)
+          if descname.at_xpath('./ancestor::section[contains(@id, "procedures")]')
             'Procedure'
           else
             'Function'
@@ -448,7 +427,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     'Operator' => ['+', '<=', '!=', '<>', '[]', '||',
                    'BETWEEN', 'NOT BETWEEN', 'LIKE', 'AND', 'OR', 'NOT',
                    'ANY', 'IS NULL', 'IS DISTINCT FROM'],
-    'Variable' => ['trino.thrift.client.connect-timeout'],
+    'Variable' => ['pinot.connection-timeout', 'trino.thrift.client.connect-timeout'],
     'Section' => ['BigQuery connector']
   }.each { |type, names|
     names.each { |name|
