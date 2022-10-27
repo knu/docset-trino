@@ -340,10 +340,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           }
         end
       when 'language/types.html'
-        main.css('h3 code').each { |code|
+        main.css('h3 > code').each { |code|
           case text = code.text.chomp('#')
           when /\A(?<w>[A-Z][A-Za-z0-9]*(\(P\))?)( \g<w>)*\z/
-            index_item.(path, h, 'Type', text)
+            index_item.(path, code.parent, 'Type', text)
           else
             raise "Unknown type name: #{text}"
           end
