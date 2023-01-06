@@ -12,6 +12,10 @@ def jenkins?
   /jenkins-/.match?(ENV['BUILD_TAG'])
 end
 
+def capture(*args)
+  `#{args.flatten.shelljoin}`
+end
+
 def paginate_command(cmd, diff: false)
   case cmd
   when Array
@@ -62,11 +66,12 @@ DOCS_DIR = Pathname(DOCS_URI.host + DOCS_URI.path.chomp('/'))
 ICON_URL = URI('https://avatars.githubusercontent.com/u/34147222?v=4&s=64')
 ICON_FILE = Pathname('icon.png')
 FETCH_LOG = 'wget.log'
+DUC_REPO = 'Dash-User-Contributions'
 DUC_OWNER = 'knu'
-DUC_REPO = "git@github.com:#{DUC_OWNER}/Dash-User-Contributions.git"
+DUC_REMOTE_URL = "git@github.com:#{DUC_OWNER}/#{DUC_REPO}.git"
 DUC_OWNER_UPSTREAM = 'Kapeli'
-DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contributions.git"
-DUC_WORKDIR = File.basename(DUC_REPO, '.git')
+DUC_REMOTE_URL_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/#{DUC_REPO}.git"
+DUC_WORKDIR = DUC_REPO
 DUC_DEFAULT_BRANCH = 'master'
 DUC_BRANCH = 'trino'
 
@@ -501,9 +506,9 @@ namespace :diff do
 end
 
 file DUC_WORKDIR do |t|
-  sh 'git', 'clone', DUC_REPO, t.name
+  sh 'git', 'clone', DUC_REMOTE_URL, t.name
   cd t.name do
-    sh 'git', 'remote', 'add', 'upstream', DUC_REPO_UPSTREAM
+    sh 'git', 'remote', 'add', 'upstream', DUC_REMOTE_URL_UPSTREAM
     sh 'git', 'remote', 'update', 'upstream'
   end
 end
@@ -575,7 +580,7 @@ task :push => DUC_WORKDIR do
     sh 'git', 'push', '-fu', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
 
     puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
-    puts "\t" + "#{DUC_REPO_UPSTREAM.delete_suffix(".git")}/compare/#{DUC_DEFAULT_BRANCH}...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
+    puts "\t" + "#{DUC_REMOTE_URL_UPSTREAM.delete_suffix(".git")}/compare/#{DUC_DEFAULT_BRANCH}...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
   end
 end
 
@@ -586,7 +591,13 @@ task :pr => DUC_WORKDIR do
       if ok
         puts "Nothing to send a pull-request for."
       else
-        sh 'hub', 'pull-request', '-b', "#{DUC_OWNER_UPSTREAM}:#{DUC_DEFAULT_BRANCH}", '-h', "#{DUC_OWNER}:#{DUC_BRANCH}", '-m', `git log -1 --pretty=%s #{DUC_BRANCH}`.chomp
+        sh(*%W[gh repo set-default #{DUC_OWNER}/#{DUC_REPO}])
+        sh(*%W[
+          gh pr create
+          --base #{DUC_OWNER_UPSTREAM}:#{DUC_REPO}:#{DUC_DEFAULT_BRANCH}
+          --head #{DUC_BRANCH}
+          --title #{capture(*%W[git log -1 --pretty=%s #{DUC_BRANCH}]).chomp}
+        ])
       end
     end
   end
