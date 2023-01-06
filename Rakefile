@@ -67,6 +67,7 @@ DUC_REPO = "git@github.com:#{DUC_OWNER}/Dash-User-Contributions.git"
 DUC_OWNER_UPSTREAM = 'Kapeli'
 DUC_REPO_UPSTREAM = "https://github.com/#{DUC_OWNER_UPSTREAM}/Dash-User-Contributions.git"
 DUC_WORKDIR = File.basename(DUC_REPO, '.git')
+DUC_DEFAULT_BRANCH = 'master'
 DUC_BRANCH = 'trino'
 
 def current_version
@@ -522,9 +523,9 @@ task :push => DUC_WORKDIR do
     sh 'git', 'rev-parse', '--verify', '--quiet', DUC_BRANCH do |ok, |
       if ok
         sh 'git', 'checkout', DUC_BRANCH
-        sh 'git', 'reset', '--hard', 'upstream/master' unless ENV['NO_RESET']
+        sh 'git', 'reset', '--hard', "upstream/#{DUC_DEFAULT_BRANCH}" unless ENV['NO_RESET']
       else
-        sh 'git', 'checkout', '-b', DUC_BRANCH, 'upstream/master'
+        sh 'git', 'checkout', '-b', DUC_BRANCH, "upstream/#{DUC_DEFAULT_BRANCH}"
       end
     end
   end
@@ -574,18 +575,18 @@ task :push => DUC_WORKDIR do
     sh 'git', 'push', '-fu', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
 
     puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
-    puts "\t" + "#{DUC_REPO_UPSTREAM.delete_suffix(".git")}/compare/master...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
+    puts "\t" + "#{DUC_REPO_UPSTREAM.delete_suffix(".git")}/compare/#{DUC_DEFAULT_BRANCH}...#{DUC_OWNER}:#{DUC_BRANCH}?expand=1"
   end
 end
 
 desc 'Send a pull-request'
 task :pr => DUC_WORKDIR do
   cd DUC_WORKDIR do
-    sh(*%W[git diff --exit-code --stat #{DUC_BRANCH}..upstream/master]) do |ok, _res|
+    sh(*%W[git diff --exit-code --stat #{DUC_BRANCH}..upstream/#{DUC_DEFAULT_BRANCH}]) do |ok, _res|
       if ok
         puts "Nothing to send a pull-request for."
       else
-        sh 'hub', 'pull-request', '-b', "#{DUC_OWNER_UPSTREAM}:master", '-h', "#{DUC_OWNER}:#{DUC_BRANCH}", '-m', `git log -1 --pretty=%s #{DUC_BRANCH}`.chomp
+        sh 'hub', 'pull-request', '-b', "#{DUC_OWNER_UPSTREAM}:#{DUC_DEFAULT_BRANCH}", '-h', "#{DUC_OWNER}:#{DUC_BRANCH}", '-m', `git log -1 --pretty=%s #{DUC_BRANCH}`.chomp
       end
     end
   end
