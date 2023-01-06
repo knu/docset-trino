@@ -536,14 +536,13 @@ task :push => DUC_WORKDIR do
   puts "Updating #{docset_json}"
   File.open(docset_json, 'r+') { |f|
     json = JSON.parse(f.read)
-    json['version'] = version
-    specific_version = {
-      'version' => version,
-      'archive' => versioned_archive.relative_path_from(workdir).to_s
-    }
-    json['specific_versions'] = ([specific_version] | json['specific_versions']).sort_by { |o|
-      Gem::Version.new(o['version'])
-    }.reverse
+    json['specific_versions'] = specific_versions = json['specific_versions'].to_set.add(
+      {
+        'version' => version,
+        'archive' => versioned_archive.relative_path_from(workdir).to_s
+      }
+    ).sort_by { |o| Gem::Version.new(o['version']) }.reverse
+    json['version'] = specific_versions.dig(0, 'version')
     f.rewind
     f.puts JSON.pretty_generate(json, indent: "    ")
     f.truncate(f.tell)
