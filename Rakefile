@@ -609,11 +609,11 @@ task :pr => DUC_WORKDIR do
       if ok
         puts "Nothing to send a pull-request for."
       else
-        sh(*%W[gh repo set-default #{DUC_OWNER}/#{DUC_REPO}])
+        sh(*%W[gh repo set-default #{DUC_OWNER_UPSTREAM}/#{DUC_REPO}])
         sh(*%W[
           gh pr create
-          --base #{DUC_OWNER_UPSTREAM}:#{DUC_REPO}:#{DUC_DEFAULT_BRANCH}
-          --head #{DUC_BRANCH}
+          --base #{DUC_DEFAULT_BRANCH}
+          --head #{DUC_OWNER}:#{DUC_REPO}:#{DUC_BRANCH}
           --title #{capture(*%W[git log -1 --pretty=%s #{DUC_BRANCH}]).chomp}
         ])
       end
