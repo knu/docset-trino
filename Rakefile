@@ -541,7 +541,9 @@ task :push => DUC_WORKDIR do
       'version' => version,
       'archive' => versioned_archive.relative_path_from(workdir).to_s
     }
-    json['specific_versions'] = [specific_version] | json['specific_versions']
+    json['specific_versions'] = ([specific_version] | json['specific_versions']).sort_by { |o|
+      Gem::Version.new(o['version'])
+    }.reverse
     f.rewind
     f.puts JSON.pretty_generate(json, indent: "    ")
     f.truncate(f.tell)
