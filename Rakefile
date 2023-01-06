@@ -534,6 +534,7 @@ task :push => DUC_WORKDIR do
   cp archive, versioned_archive
 
   puts "Updating #{docset_json}"
+  updated = false
   File.open(docset_json, 'r+') { |f|
     json = JSON.parse(f.read)
     json['specific_versions'] = specific_versions = json['specific_versions'].to_set.add(
@@ -542,7 +543,9 @@ task :push => DUC_WORKDIR do
         'archive' => versioned_archive.relative_path_from(workdir).to_s
       }
     ).sort_by { |o| Gem::Version.new(o['version']) }.reverse
-    json['version'] = specific_versions.dig(0, 'version')
+    latest_version = specific_versions.dig(0, 'version')
+    updated = json['version'] != latest_version
+    json['version'] = latest_version
     f.rewind
     f.puts JSON.pretty_generate(json, indent: "    ")
     f.truncate(f.tell)
@@ -561,7 +564,13 @@ task :push => DUC_WORKDIR do
     sh 'git', 'add', *[archive, versioned_archive, docset_json].map { |path|
       path.relative_path_from(workdir).to_s
     }
-    sh 'git', 'commit', '-m', "Update #{DOCSET_NAME} docset to #{version}"
+    message =
+      if updated
+        "Update #{DOCSET_NAME} docset to #{version}"
+      else
+        "Add #{DOCSET_NAME} docset #{version}"
+      end
+    sh 'git', 'commit', '-m', message
     sh 'git', 'push', '-fu', 'origin', "#{DUC_BRANCH}:#{DUC_BRANCH}"
 
     puts "New docset is committed and pushed to #{DUC_OWNER}:#{DUC_BRANCH}.  To send a PR, go to the following URL:"
