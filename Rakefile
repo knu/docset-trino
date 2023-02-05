@@ -336,6 +336,26 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             index_item.(path, pre, 'Variable', pre.text)
           end
         end
+
+        connector_name = nil
+
+        main.css('section#procedures > ul').each do |el|
+          connector_name ||=
+            main.xpath('//section[contains(@id, "configuration")]//pre').find { |pre|
+              if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
+                break name
+              end
+            } or raise "#{path}: connector.name not found"
+
+          el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
+            if procedure = para.xpath('normalize-space(.)')[/\A(?:CALL\s+)?\K[^(]+/]
+              if procedure.delete_prefix!('example.')
+                warn "#{path}: example. prefix is found and removed: #{procedure}"
+              end
+              index_item.(path, el, 'Procedure', "#{connector_name}.#{procedure}")
+            end
+          end
+        end
       when 'language/types.html'
         main.css('h3 > code').each { |code|
           case text = code.text.chomp('#')
@@ -361,14 +381,6 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
               }
             end
           }
-        end
-      end
-
-      main.css('section#procedures > ul').each do |el|
-        el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
-          if procedure = para.text[/\A(?:CALL\s+)?\K[^(]+/]
-            index_item.(path, el, 'Procedure', procedure)
-          end
         end
       end
 
@@ -425,12 +437,9 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
     'Procedure' => ['runtime.kill_query',
                     'kudu.system.add_range_partition',
                     'kudu.system.drop_range_partition',
-                    'system.create_empty_partition',
-                    'system.drop_stats',
-                    'system.flush_metadata_cache',
-                    'system.register_partition',
-                    'system.sync_partition_metadata',
-                    'system.unregister_partition'],
+                    'hive.system.create_empty_partition',
+                    'hive.system.drop_stats',
+                    'postgresql.system.flush_metadata_cache'],
     'Type' => ['BOOLEAN', 'BIGINT', 'DOUBLE', 'DECIMAL', 'VARCHAR', 'VARBINARY',
                'DATE', 'TIMESTAMP', 'TIMESTAMP(P) WITH TIME ZONE',
                'ARRAY', 'UUID', 'HyperLogLog'],
