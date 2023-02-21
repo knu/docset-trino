@@ -126,6 +126,7 @@ def wget(*args)
     '--append-output', FETCH_LOG,
     '-N',
     '--retry-on-http-error=500,502,503,504',
+    '-R', 'glossCatalog',
     *args
   )
 end
@@ -382,6 +383,12 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           }
         end
+      when 'glossary.html'
+        main.css('a[href^="gloss"]:not([href$=".html"])').each { |a|
+          href = a['href']
+          warn "bad link in #{path}: #{href}"
+          a['href'] = '#' + href.downcase
+        }
       end
 
       main.css('.descname').each { |descname|
