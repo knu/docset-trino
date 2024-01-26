@@ -332,7 +332,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         }
       when %r{\Aconnector/}
-        main.xpath('.//table[.//th[translate(., "NP", "np") = "property name"] and ./ancestor::section[contains(@id, "properties")]]').each do |table|
+        main.xpath('.//table[.//th[translate(., "NP", "np") = "property name"] and ./ancestor::section[contains(@id, "properties") or contains(@id, "configuration")]]').each do |table|
           table.css('td:first-of-type .literal > .pre').each do |pre|
             index_item.(path, pre, 'Variable', pre.text)
           end
