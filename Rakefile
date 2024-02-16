@@ -59,7 +59,7 @@ def extract_version
 end
 
 def existing_pull_url
-  repo = URI(DUC_REPO_UPSTREAM).path[%r{\A/\K.+(?=\.git\z)}]
+  repo = "#{DUC_OWNER_UPSTREAM}/#{DUC_REPO}"
   query = "repo:#{repo} is:pr author:#{DUC_OWNER} head:#{DUC_BRANCH} is:open"
   graphql = <<~GRAPHQL
     query($q: String!) {
