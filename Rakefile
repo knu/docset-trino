@@ -717,7 +717,7 @@ task :pr => DUC_WORKDIR do
         sh(*%W[
           gh pr create
           --base #{DUC_DEFAULT_BRANCH}
-          --head #{DUC_OWNER}:#{DUC_REPO}:#{DUC_BRANCH}
+          --head #{DUC_OWNER}:#{DUC_BRANCH}
           --title #{capture(*%W[git log -1 --pretty=%s #{DUC_BRANCH}]).chomp}
         ])
       end
