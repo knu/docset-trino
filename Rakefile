@@ -46,6 +46,10 @@ def between_texts?(node, prev_pattern, next_pattern)
      text_node_match(node.next, next_pattern))
 end
 
+def header_text(h)
+  h.text.chomp(h.at_css('a.headerlink')&.text)
+end
+
 def extract_version
   cd DOCS_ROOT do
     Dir.glob('**/index.html') { |path|
@@ -280,10 +284,10 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       main = doc.at('article') or next
 
       if h1 = main.at_css('h1')
-        index_item.(path, h1, 'Section', h1.text.chomp('#'))
+        index_item.(path, h1, 'Section', header_text(h1))
       end
       main.css('h2, h3').each { |h|
-        anchor_section.(path, h, h.text.chomp('#'))
+        anchor_section.(path, h, header_text(h))
       }
 
       case path
@@ -291,7 +295,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         case File.basename(path, '.html')
         when 'conditional'
           main.css('h2').each { |h|
-            title = h.text.chomp('#')
+            title = header_text(h)
             if h.at_xpath("./following-sibling::*[1]/code[string(.) = '#{title}' and starts-with(normalize-space(./following-sibling::text()[1]), 'expression ')]")
               case title
               when 'CASE', 'IF'
@@ -356,7 +360,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         }
 
         main.css('h2').each { |h2|
-          case h2.text.chomp('#')
+          case header_text(h2)
           when /\A(?:[\w ]+: )?(?<operators>(?:(?:(?<op>(?:(?<w>[A-Z]+) )*\g<w>), )*\g<op> and )?\g<op>)\z/
             $~[:operators].scan(/(?<op>(?:(?<w>[A-Z]+) )*\g<w>)/) {
               index_item.(path, h2, 'Operator', $~[:op])
@@ -391,7 +395,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         end
       when 'language/types.html'
         main.css('h3 > code').each { |code|
-          case text = code.text.chomp('#')
+          case text = header_text(code)
           when /\A(?<w>[A-Z][A-Za-z0-9]*(\(P\))?)( \g<w>)*\z/
             index_item.(path, code.parent, 'Type', text)
           else
@@ -400,14 +404,14 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
         }
       when %r{\Asql/}
         main.css('h1').each { |h1|
-          case h1.text.chomp('#')
+          case header_text(h1)
           when /\A(?<st>((?<w>[A-Z]+) )*\g<w>)\z/
             index_item.(path, h1, 'Statement', $~[:st])
           end
         }
         if path == 'sql/select.html'
           main.css('h2, h3').each { |h|
-            case h.text.chomp('#')
+            case header_text(h)
             when /\A(?<queries>(?:(?<q>(?:(?<w>[A-Z]+) )*\g<w>) or )*\g<q>)(?: clause)?\z/
               $~[:queries].scan(/(?<q>(?:(?<w>[A-Z]+) )*\g<w>)/) {
                 index_item.(path, h, 'Query', $~[:q])
