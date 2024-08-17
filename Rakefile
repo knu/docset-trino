@@ -50,6 +50,10 @@ def header_text(h)
   h.text.chomp(h.at_css('a.headerlink')&.text)
 end
 
+def xpath_has_class(class_name)
+  "contains(concat(' ', normalize-space(@class), ' '), ' #{class_name} ')"
+end
+
 def extract_version
   cd DOCS_ROOT do
     Dir.glob('**/index.html') { |path|
@@ -374,16 +378,14 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
           end
         end
 
-        connector_name = nil
+        connector_name =
+          main.xpath('//section[contains(@id, "configuration")]//pre').find { |pre|
+            if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
+              break name
+            end
+          } || File.basename(path, '.html')
 
         main.css('section#procedures > ul').each do |el|
-          connector_name ||=
-            main.xpath('//section[contains(@id, "configuration")]//pre').find { |pre|
-              if name = pre.xpath('normalize-space(.)')[/^connector.name=\K\w+/]
-                break name
-              end
-            } or raise "#{path}: connector.name not found"
-
           el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
             if procedure = para.xpath('normalize-space(.)')[/\A(?:CALL\s+)?\K[^(]+/]
               if procedure.delete_prefix!('example.')
@@ -391,6 +393,20 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
               end
               index_item.(path, el, 'Procedure', "#{connector_name}.#{procedure}")
             end
+          end
+        end
+
+        main.xpath(".//h4//code[./following-sibling::a[#{xpath_has_class('headerlink')}]]/*[position() = 1 and #{xpath_has_class('pre')}]").each do |pre|
+          case pre.text
+          when /\A((?:\w+\.)\w+)\(/
+            func = $1
+            type =
+              if pre.at_xpath('./ancestor::section[contains(@id, "procedures")]')
+                'Procedure'
+              elsif pre.at_xpath('./ancestor::section[contains(@id, "functions")]')
+                'Function'
+              end or next
+            index_item.(path, pre, type, "#{connector_name}.#{func}")
           end
         end
       when 'language/types.html'
@@ -430,6 +446,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
       main.css('.descname').each { |descname|
         func =
           if (prev = descname.previous).matches?('.descclassname')
+            # This is lesser used by now.
             prev.text + descname.text
           else
             descname.text
