@@ -119,18 +119,37 @@ DUC_WORKDIR = DUC_REPO
 DUC_DEFAULT_BRANCH = 'master'
 DUC_BRANCH = 'trino'
 
+def duc_versions(ref)
+  Rake::Task[DUC_WORKDIR].invoke
+
+  cd Pathname(DUC_WORKDIR) do
+    docset_json = Pathname('docsets') / File.basename(DOCSET, '.docset') / 'docset.json'
+
+    JSON.parse(
+      capture(*%W[git cat-file -p #{ref}:#{docset_json}])
+    )['specific_versions'].map { |o| o['version'] }
+  end
+end
+
 def current_version
   ENV['BUILD_VERSION'] || extract_version()
 end
 
 def previous_version
-  ENV['PREVIOUS_VERSION'] || Gem::Version.new(current_version).then { |current_version|
-    Pathname.glob("versions/*/#{DOCSET}").map { |path|
-      Gem::Version.new(path.parent.basename.to_s)
-    }.select { |version|
-      version < current_version
-    }.max&.to_s
-  }
+  case version = ENV['PREVIOUS_VERSION']
+  when nil, ''
+    Gem::Version.new(current_version).then { |current_version|
+      Pathname.glob("versions/*/#{DOCSET}").map { |path|
+        Gem::Version.new(path.parent.basename.to_s)
+      }.select { |version|
+        version < current_version
+      }.max&.to_s
+    }
+  when 'published'
+    duc_versions("upstream/#{DUC_DEFAULT_BRANCH}").first
+  else
+    version
+  end
 end
 
 def previous_docset
@@ -611,12 +630,12 @@ task :push => DUC_WORKDIR do
     else
       sh 'git', 'checkout', '-b', DUC_BRANCH, start_ref
     end
+  end
 
-    base_versions, head_versions = %W[upstream/#{DUC_DEFAULT_BRANCH} HEAD].map { |branch|
-      JSON.parse(
-        capture(*%W[git cat-file -p #{branch}:#{docset_json.relative_path_from(DUC_WORKDIR)}])
-      )['specific_versions'].map { |o| o['version'] }
-    }
+  base_versions = duc_versions("upstream/#{DUC_DEFAULT_BRANCH}")
+  head_versions = duc_versions("HEAD")
+
+  cd workdir.to_s do
     if (head_versions - base_versions - [version]).empty?
       sh 'git', 'reset', '--hard', "upstream/#{DUC_DEFAULT_BRANCH}"
     end
