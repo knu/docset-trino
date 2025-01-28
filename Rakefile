@@ -374,7 +374,7 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
                 case op = literal.text.gsub(/\s+/, ' ')
                 when /\A(?:NULL|TRUE|FALSE)\z|\A[a-z]/
                   # ignore
-                else
+                when /\A(?:(?<w>[A-Z]+) )*\g<w>\z/, /\A[[:punct:]]+\z/
                   index_item.(path, literal, 'Operator', op)
                 end
               }
