@@ -415,8 +415,12 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
 
         main.css('section#procedures pre').each do |pre|
           if procedure = pre.xpath('normalize-space(.)')[/(?:\A| )(?:CALL|EXECUTE) \K[\w.]+/]
-            if procedure.sub!(/\A(example\.)/, '')
-              warn "#{path}: #{$1} prefix is found and removed: #{procedure}"
+            case procedure
+            when /\Aexamplecatalog\./
+              next
+            when /\Aexample\./
+              procedure = $'
+              warn "#{path}: #{$&} prefix is found and removed: #{procedure}"
             end
             index_item.(path, pre, 'Procedure', "#{connector_name}.#{procedure}")
           end
