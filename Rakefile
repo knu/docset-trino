@@ -404,14 +404,33 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
             end
           } || File.basename(path, '.html')
 
+        # hive.html
         main.css('section#procedures > ul').each do |el|
           el.xpath('./li/p[position() = 1]/code[position() = 1]').each do |para|
             if procedure = para.xpath('normalize-space(.)')[/\A(?:CALL\s+)?\K[^(]+/]
-              if procedure.delete_prefix!('example.')
-                warn "#{path}: example. prefix is found and removed: #{procedure}"
-              end
               index_item.(path, el, 'Procedure', "#{connector_name}.#{procedure}")
             end
+          end
+        end
+
+        main.css('section#procedures pre').each do |pre|
+          if procedure = pre.xpath('normalize-space(.)')[/(?:\A| )(?:CALL|EXECUTE) \K[\w.]+/]
+            if procedure.sub!(/\A(example\.)/, '')
+              warn "#{path}: #{$1} prefix is found and removed: #{procedure}"
+            end
+            index_item.(path, pre, 'Procedure', "#{connector_name}.#{procedure}")
+          end
+        end
+
+        main.css('section#table-functions h4 code').each do |code|
+          if procedure = code.xpath('normalize-space(.)')[/\A[\w.]+/]
+            index_item.(path, code, 'Function', "#{connector_name}.#{procedure}")
+          end
+        end
+
+        main.css('section#functions pre').each do |pre|
+          if procedure = pre.xpath('normalize-space(.)')[/\A(?:SELECT )?\K[\w.]+/]
+            index_item.(path, pre, 'Function', "#{connector_name}.#{procedure}")
           end
         end
 
@@ -512,12 +531,14 @@ task :build => [DOCS_DIR, ICON_FILE] do |t|
                 'IF', 'CASE'],
     'Function' => ['count', 'merge',
                    'array_sort', 'rank',
-                   'if', 'coalesce', 'nullif'],
+                   'if', 'coalesce', 'nullif',
+                   'bigquery.query'],
     'Procedure' => ['runtime.kill_query',
-                    'kudu.system.add_range_partition',
-                    'kudu.system.drop_range_partition',
+                    'bigquery.system.execute',
                     'hive.system.create_empty_partition',
                     'hive.system.drop_stats',
+                    'iceberg.system.register_table',
+                    'iceberg.system.unregister_table',
                     'postgresql.system.flush_metadata_cache'],
     'Type' => ['BOOLEAN', 'BIGINT', 'DOUBLE', 'DECIMAL', 'VARCHAR', 'VARBINARY',
                'DATE', 'TIMESTAMP', 'TIMESTAMP(P) WITH TIME ZONE',
